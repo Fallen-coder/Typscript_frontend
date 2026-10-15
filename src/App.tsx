@@ -1,4 +1,8 @@
-import { useState, useEffect, type ChangeEvent } from "react";
+import { useState, useEffect } from "react";
+import Navbar from "./components/Navbar";
+import RegisterTab from "./components/RegisterTab";
+import LoginTab from "./components/LoginTab";
+import PostList from "./components/PostList";
 
 interface CommentItem {
   id: number;
@@ -18,12 +22,10 @@ export default function App() {
   const [authToken, setAuthToken] = useState<string>(() => localStorage.getItem("api_token") || "");
   const [userName, setUserName] = useState<string>("");
 
-  // Posts & Loading State
   const [posts, setPosts] = useState<Post[]>([]);
   const [commentsMap, setCommentsMap] = useState<Record<number, CommentItem[]>>({});
   const [isLoadingPosts, setIsLoadingPosts] = useState<boolean>(false);
 
-  // Form Inputs
   const [newPostTitle, setNewPostTitle] = useState<string>("");
   const [newPostBody, setNewPostBody] = useState<string>("");
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
@@ -66,9 +68,7 @@ export default function App() {
         method: "GET",
         headers: getHeaders(false),
       });
-
       if (!response.ok) throw new Error(`HTTP kļūda: ${response.status}`);
-
       const data = await response.json();
       setPosts(data || []);
       if (Array.isArray(data)) {
@@ -83,17 +83,14 @@ export default function App() {
 
   const fetchPostsXHR = () => {
     setIsLoadingPosts(true);
-
     const xhr = new XMLHttpRequest();
     xhr.open("GET", `${API_BASE_URL}/posts`, true);
-
     const headers = getHeaders(false);
     for (const key in headers) {
       if (Object.prototype.hasOwnProperty.call(headers, key)) {
         xhr.setRequestHeader(key, headers[key]);
       }
     }
-
     xhr.onload = function () {
       setIsLoadingPosts(false);
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -111,12 +108,10 @@ export default function App() {
         alert("Neizdevās saņemt datus (XHR).");
       }
     };
-
     xhr.onerror = function () {
       setIsLoadingPosts(false);
       console.error("Tīkla kļūda pieprasījumā.");
     };
-
     xhr.send();
   };
 
@@ -125,20 +120,17 @@ export default function App() {
       alert("Aizpildiet virsrakstu un tekstu.");
       return;
     }
-
     if (!authToken) {
       alert("Lūdzu, vispirms pieslēdzieties!");
       setActiveTab("login");
       return;
     }
-
     try {
       const response = await fetch(`${API_BASE_URL}/posts`, {
         method: "POST",
         headers: getHeaders(true),
         body: JSON.stringify({ title: newPostTitle, body: newPostBody }),
       });
-
       if (response.ok) {
         setNewPostTitle("");
         setNewPostBody("");
@@ -154,13 +146,11 @@ export default function App() {
 
   const handleDeletePost = async (postId: number) => {
     if (!window.confirm("Vai tiešām vēlaties dzēst šo rakstu?")) return;
-
     try {
       const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
         method: "DELETE",
         headers: getHeaders(true),
       });
-
       if (response.ok) {
         fetchPostsAsync();
       } else {
@@ -177,9 +167,7 @@ export default function App() {
         method: "GET",
         headers: getHeaders(false),
       });
-
       if (!response.ok) return;
-
       const data = await response.json();
       setCommentsMap((prev) => ({ ...prev, [postId]: data || [] }));
     } catch (error) {
@@ -190,20 +178,17 @@ export default function App() {
   const handleAddComment = async (postId: number) => {
     const content = (commentInputs[postId] || "").trim();
     if (!content) return;
-
     if (!authToken) {
       alert("Vispirms pieslēdzieties!");
       setActiveTab("login");
       return;
     }
-
     try {
       const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
         method: "POST",
         headers: getHeaders(true),
         body: JSON.stringify({ content }),
       });
-
       if (response.ok) {
         setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
         fetchComments(postId);
@@ -215,13 +200,11 @@ export default function App() {
 
   const handleDeleteComment = async (postId: number, commentId: number) => {
     if (!window.confirm("Dzēst komentāru?")) return;
-
     try {
       const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments/${commentId}`, {
         method: "DELETE",
         headers: getHeaders(true),
       });
-
       if (response.ok) {
         fetchComments(postId);
       }
@@ -242,7 +225,6 @@ export default function App() {
           password_confirmation: regPasswordConfirm,
         }),
       });
-
       const data = await response.json();
       if (response.ok && data.token) {
         setAuthToken(data.token);
@@ -263,7 +245,6 @@ export default function App() {
         headers: getHeaders(false),
         body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
       });
-
       const data = await response.json();
       if (response.ok && data.token) {
         setAuthToken(data.token);
@@ -294,210 +275,58 @@ export default function App() {
 
   return (
     <div>
-      <nav className="navbar">
-        <div className="nav-brand">API Testēšana</div>
-        <div className="nav-links">
-          <button
-            type="button"
-            className={`nav-btn ${activeTab === "posts" ? "active" : ""}`}
-            onClick={() => setActiveTab("posts")}
-          >
-            Raksti
-          </button>
-          {!authToken ? (
-            <>
-              <button
-                type="button"
-                className={`nav-btn ${activeTab === "login" ? "active" : ""}`}
-                onClick={() => setActiveTab("login")}
-              >
-                Ienākt
-              </button>
-              <button
-                type="button"
-                className={`nav-btn ${activeTab === "register" ? "active" : ""}`}
-                onClick={() => setActiveTab("register")}
-              >
-                Reģistrēties
-              </button>
-            </>
-          ) : (
-            <button type="button" className="nav-btn btn-danger" onClick={handleLogout}>
-              Iziet
-            </button>
-          )}
-        </div>
-      </nav>
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        authToken={authToken}
+        handleLogout={handleLogout}
+      />
 
       <main className="container">
         {activeTab === "register" && (
-          <section className="tab-content section">
-            <h2>Reģistrācija</h2>
-            <div className="form-group">
-              <input
-                type="text"
-                placeholder="Vārds"
-                value={regName}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setRegName(e.target.value)}
-                autoComplete="name"
-              />
-              <input
-                type="email"
-                placeholder="E-pasts"
-                value={regEmail}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setRegEmail(e.target.value)}
-                autoComplete="email"
-              />
-              <input
-                type="password"
-                placeholder="Parole"
-                value={regPassword}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setRegPassword(e.target.value)}
-                autoComplete="new-password"
-              />
-              <input
-                type="password"
-                placeholder="Atkārtojiet paroli"
-                value={regPasswordConfirm}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setRegPasswordConfirm(e.target.value)}
-                autoComplete="new-password"
-              />
-              <button type="button" onClick={handleRegister}>
-                Reģistrēties
-              </button>
-            </div>
-          </section>
+          <RegisterTab
+            regName={regName}
+            setRegName={setRegName}
+            regEmail={regEmail}
+            setRegEmail={setRegEmail}
+            regPassword={regPassword}
+            setRegPassword={setRegPassword}
+            regPasswordConfirm={regPasswordConfirm}
+            setRegPasswordConfirm={setRegPasswordConfirm}
+            handleRegister={handleRegister}
+          />
         )}
 
         {activeTab === "login" && (
-          <section className="tab-content section">
-            <h2>Autentifikācija</h2>
-            <div className="status-badge">
-              Statuss: {authToken ? `Pieslēdzies${userName ? " kā " + userName : ""}` : "Nav pieteicies"}
-            </div>
-            <div className="form-group">
-              <input
-                type="email"
-                placeholder="E-pasts"
-                value={loginEmail}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setLoginEmail(e.target.value)}
-                autoComplete="email"
-              />
-              <input
-                type="password"
-                placeholder="Parole"
-                value={loginPassword}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setLoginPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-              <button type="button" onClick={handleLogin}>
-                Pieslēgties
-              </button>
-            </div>
-          </section>
+          <LoginTab
+            authToken={authToken}
+            userName={userName}
+            loginEmail={loginEmail}
+            setLoginEmail={setLoginEmail}
+            loginPassword={loginPassword}
+            setLoginPassword={setLoginPassword}
+            handleLogin={handleLogin}
+          />
         )}
 
         {activeTab === "posts" && (
-          <section className="tab-content section">
-            <h2>Raksti</h2>
-
-            <div className="form-group">
-              <h3>Izveidot jaunu rakstu</h3>
-              <input
-                type="text"
-                placeholder="Virsraksts"
-                value={newPostTitle}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPostTitle(e.target.value)}
-              />
-              <textarea
-                placeholder="Raksta teksts..."
-                value={newPostBody}
-                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNewPostBody(e.target.value)}
-              />
-              <button type="button" onClick={handleCreatePost}>
-                Saglabāt rakstu
-              </button>
-            </div>
-
-            <div className="posts-header">
-              <h3>Visi raksti</h3>
-              <div className="method-buttons">
-                <button className="btn-secondary" type="button" onClick={fetchPostsAsync}>
-                  Atjaunot (Fetch API)
-                </button>
-                <button className="btn-secondary" type="button" onClick={fetchPostsXHR}>
-                  Atjaunot (XMLHttpRequest)
-                </button>
-              </div>
-            </div>
-
-            <div id="posts-list">
-              {isLoadingPosts ? (
-                <div className="spinner-container">
-                  <div className="spinner"></div>
-                  <span>Ielādē datus...</span>
-                </div>
-              ) : posts.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
-                  Nav pieejamu rakstu.
-                </div>
-              ) : (
-                posts.map((post) => {
-                  const comments = commentsMap[post.id];
-                  return (
-                    <div key={post.id} className="post-card">
-                      <h3>
-                        {post.title} <small>ID: {post.id}</small>
-                      </h3>
-                      <p>{post.body}</p>
-                      <button className="btn-danger" onClick={() => handleDeletePost(post.id)}>
-                        Dzēst rakstu
-                      </button>
-
-                      <div className="comments-section">
-                        <h4>KOMENTĀRI</h4>
-                        <div>
-                          {!comments ? (
-                            <i>Ielādē komentārus...</i>
-                          ) : comments.length === 0 ? (
-                            <i>Komentāru nav.</i>
-                          ) : (
-                            comments.map((comment) => (
-                              <div key={comment.id} className="comment">
-                                <p>{comment.content}</p>
-                                <button
-                                  className="btn-danger"
-                                  style={{ padding: "4px 8px", fontSize: "0.75rem" }}
-                                  onClick={() => handleDeleteComment(post.id, comment.id)}
-                                >
-                                  Dzēst
-                                </button>
-                              </div>
-                            ))
-                          )}
-                        </div>
-
-                        <div className="comment-input-group">
-                          <input
-                            type="text"
-                            placeholder="Rakstīt komentāru..."
-                            value={commentInputs[post.id] || ""}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                              setCommentInputs((prev) => ({
-                                ...prev,
-                                [post.id]: e.target.value,
-                              }))
-                            }
-                          />
-                          <button onClick={() => handleAddComment(post.id)}>Pievienot</button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
+          <PostList
+            posts={posts}
+            commentsMap={commentsMap}
+            isLoadingPosts={isLoadingPosts}
+            newPostTitle={newPostTitle}
+            setNewPostTitle={setNewPostTitle}
+            newPostBody={newPostBody}
+            setNewPostBody={setNewPostBody}
+            commentInputs={commentInputs}
+            setCommentInputs={setCommentInputs}
+            handleCreatePost={handleCreatePost}
+            fetchPostsAsync={fetchPostsAsync}
+            fetchPostsXHR={fetchPostsXHR}
+            handleDeletePost={handleDeletePost}
+            handleAddComment={handleAddComment}
+            handleDeleteComment={handleDeleteComment}
+          />
         )}
       </main>
     </div>
