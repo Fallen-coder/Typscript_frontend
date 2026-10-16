@@ -38,18 +38,7 @@ export default function App() {
   const [regPassword, setRegPassword] = useState<string>("");
   const [regPasswordConfirm, setRegPasswordConfirm] = useState<string>("");
 
-  useEffect(() => {
-    if (authToken) {
-      localStorage.setItem("api_token", authToken);
-    } else {
-      localStorage.removeItem("api_token");
-    }
-  }, [authToken]);
-
-  useEffect(() => {
-    fetchPostsAsync();
-  }, []);
-
+  // 1. PALĪGFUNKCIJAS PĀRVIETOTAS AUGSTĀK (PIRMS useEffect)
   const getHeaders = (includeAuth = true): Record<string, string> => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -59,6 +48,20 @@ export default function App() {
       headers["Authorization"] = `Bearer ${authToken}`;
     }
     return headers;
+  };
+
+  const fetchComments = async (postId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
+        method: "GET",
+        headers: getHeaders(false),
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      setCommentsMap((prev) => ({ ...prev, [postId]: data || [] }));
+    } catch (error) {
+      console.error("Kļūda ielādējot komentārus:", error);
+    }
   };
 
   const fetchPostsAsync = async () => {
@@ -81,6 +84,19 @@ export default function App() {
     }
   };
 
+  // 2. useEffect BLOKI ATRODAS PĒC FUNKCIJU DEKLARĀCIJAS
+  useEffect(() => {
+    if (authToken) {
+      localStorage.setItem("api_token", authToken);
+    } else {
+      localStorage.removeItem("api_token");
+    }
+  }, [authToken]);
+
+// eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchPostsAsync();
+  }, []);
   const fetchPostsXHR = () => {
     setIsLoadingPosts(true);
     const xhr = new XMLHttpRequest();
@@ -158,20 +174,6 @@ export default function App() {
       }
     } catch (error) {
       console.error("Kļūda dzēšot rakstu:", error);
-    }
-  };
-
-  const fetchComments = async (postId: number) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
-        method: "GET",
-        headers: getHeaders(false),
-      });
-      if (!response.ok) return;
-      const data = await response.json();
-      setCommentsMap((prev) => ({ ...prev, [postId]: data || [] }));
-    } catch (error) {
-      console.error("Kļūda ielādējot komentārus:", error);
     }
   };
 
